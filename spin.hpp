@@ -105,6 +105,7 @@ matrix exp_aH(typename matrix::Scalar a,const matrix &H){
 /* Operator class */
 class Operator {
 	
+	Operator() = default;
 	/* The variable named "subspace_dim" store the dimision of subspaces which this operator is in.
 	 * the subspaces is numbered one by one from zero.  The value of subspace_dim[a] is the dimision
 	 * of subspace numbered a.  This means that, for an operator in subspace numbered 6 and 7, subspace_dim
@@ -127,11 +128,86 @@ class Operator {
 	 * where A is current operator's space and B is the space specified by parameter "subspace"
 	 * the dimision of B is given by the parameter "dimision"
 	 */
-	Operator expand(int subspace,int dimision) const {}
+	Operator expand(int subspace,int dimision) const {
+		Operator ret;
+		ret.subspace_dim = subspace_dim;
+		if(subspace+1>ret.subspace_dim.size())
+			ret.subspace_dim.resize(subspace+1,0);
+		if(subspace_dim[subspace]>0)
+			throw "Operator::expand(): already in subspace";
+		ret.subspace_dim[subspace] = dimision;
+		/* here we define several terms: non-empty, lspace, rspace and espace
+		 * we say a subspace numbered n is non-empty if subspace_dim[n]>0 
+		 * lspace is the direct product space of non empty spaces numbered 0,1,2,...,(subspace-1)
+		 * rspace is the direct product space of non empty spaces numbered (subspace+1),(subspace+2),...,n
+		 * espace is the space numbered "subspace"(the parameter given)
+		 */
+		int new_dim;	/* dimision of the result (i.e. the direct product space of lspace, espace and rspace) */
+		int ldim;		/* dimision of lspace */
+		int rdim;		/* dimision of rspace */
+		int rdim2;		/* dimision of the direct product space of espace and rspace */
+		/* calculate new_dim, ldim, rdim and rdim2 */
+		new_dim = mat.cols()*dimision;
+		ldim = accumulate(subspace_dim.begin(),subspace.begin()+subspace,1,
+							  [](int a,int b){ return (a<=0?1:a)*(b<=0?1:b); });
+		rdim2 = new_dim/ldim;
+		rdim = rdim2/ldim;
+		ret.mat.resize(new_dim,new_dim);
+		/* calculate new elements */
+		for(int i=0;i<new_dim;i++) {
+			for(int j=0;j<new_dim;j++) {
+				/* (i1,j1) is (i,j)'s coordinate in lspace */
+				int i1 = i/rdim2;
+				int j1 = j/rdim2;
+				/* (i2,j2) is (i,j)'s coordinate in espace */
+				int i2 = i%rdim2/rdim;
+				int j2 = j%rdim2/rdim;
+				/* (i3,j3) is (i,j)'s coordinate in rspace */
+				int i3 = i%rdim2%rdim;
+				int j3 = j%rdim2%rdim;
+				/* (i4,j4) is (i,j)'s corresponding coordinate in the direct procuct space of lspace and rspace */
+				int i4 = i1*rdim+i3;
+				int j4 = j1*rdim+j3;
+				ret.mat(i,j) = (i2!=j2?0:mat(i4,j4));
+			}
+		}
+		return ret;
+	}
+	
+	/* expand current operator to the product space of op(given by parameter) and this operator
+	 * note that the product may not be direct procuct
+	 */ 
+	Operator expand(const Operator &op) const {
+		Operator ret = *this;
+		vector<int> target_dim = subspace_dim;
+		int op_sz = op.subspace_dim.size();
+		if(target_dim.size()<op_sz)
+			target_dim.resize(op_sz,0);
+		auto it1 = target_dim.begin();
+		auto it2 = op.subspace_dim.begin();
+		while(it1!=target_dim.end()){
+			if(*it1<=0&&*it2<=0)
+				goto end;
+			if(*it1>0&&*it2>0)
+				throw "Operator::expand(): dimision information mismatch";
+			if(*it2>0)
+				ret = ret.expand(it1-target_dim.begin(),*it2);
+		end:
+			++it1;
+			++it2;
+		}
+	}
 	
 public:
 	
-	Operator(vector<int> subspace_dim,MatrixXcd matrix):subspace_dim(subspace_dim),mat(matrix){}
+	Operator(vector<int> subspace_dim,MatrixXcd matrix):subspace_dim(subspace_dim),mat(matrix){
+		if(subspace_dim.size()==0)
+			throw "Operator::Operator(): the operator must be in at least one subspace";
+		int dim = accumulate(subspace_dim.begin(),subspace.end(),1,
+							 [](int a,int b){ return (a<=0?1:a)*(b<=0?1:b); });
+		if(dim!=matrix.cols()||dim!=matrix.rows())
+			throw "Operator::Operator(): matrix size and dimision information mismatch";
+	}
 	/* initialize an operator in a single subspace */
 	Operator(int subspace,const MatrixXcd &matrix):subspace_dim(subspace+1,0),mat(matrix) {
 		if(subspace<0)
@@ -168,9 +244,10 @@ public:
 		return tr(subspace).tr(args...);
 	}
 	Operator tr(int subspace) const {
-		/* here we define two terms: lspace, rspace and tspace
-		 * lspace is a Hilbert space which is the direct product of space 0,1,2,...,(subspace-1)
-		 * rspace is a Hilbert space which is the direct product of space (subspace+1),(subspace+2),...,n
+		/* here we define several terms: non-empty, lspace, rspace and tspace
+		 * we say a subspace numbered n is non-empty if subspace_dim[n]>0 
+		 * lspace is the direct product space of non empty spaces numbered 0,1,2,...,(subspace-1)
+		 * rspace is the direct product space of non empty spaces numbered (subspace+1),(subspace+2),...,n
 		 * tspace is the Hilbert space to be traced
 		 */
 		int dim;		/* dimision of tspace */
@@ -184,7 +261,7 @@ public:
 		dim = subspace_dim[subspace];
 		if(dim<=0)
 			return *this;
-		/* calculate new_dim,ldim, rdim and rdim2 */
+		/* calculate new_dim, ldim, rdim and rdim2 */
 		new_dim = mat.cols()/dim;
 		ldim = accumulate(subspace_dim.begin(),subspace.begin()+subspace,1,
 						  [](int a,int b){ return (a<=0?1:a)*(b<=0?1:b); });
@@ -208,16 +285,27 @@ public:
 				}
 			}
 		}
-		return ret;
+		/* generate the new operator */
+		vector<int> dim_info = subspace_dim;
+		dim_info[subspace] = 0;
+		return Operator(dim_info,ret);
 	}
 	
 	/* arithmetic of operator */
 	Operator operator+(const Operator &rhs) const {
-		bool lhs_needs_expand;
+		Operator _lhs = expand(rhs);
+		Operator _rhs = expand(*this);
+		return Operator(_lhs.subspace_dim,_lhs.mat+_rhs.mat);
 	}
 	Operator operator-(const Operator &rhs) const {
+		Operator _lhs = expand(rhs);
+		Operator _rhs = expand(*this);
+		return Operator(_lhs.subspace_dim,_lhs.mat-_rhs.mat);
 	}
 	Operator operator*(const Operator &rhs) const {
+		Operator _lhs = expand(rhs);
+		Operator _rhs = expand(*this);
+		return Operator(_lhs.subspace_dim,_lhs.mat*_rhs.mat);
 	}
 	Operator operator+() const {
 		return *this;
