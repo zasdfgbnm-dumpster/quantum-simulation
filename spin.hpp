@@ -116,7 +116,7 @@ class Operator {
 	 */
 	vector<int> subspace_dim;
 	
-	/* the variable "mat" stores the corresponding matrix of this operator.  Subspaces will be ordered by its' number
+	/* the variable "mat" stores the corresponding matrix of this operator.  Subspaces will be ordered by its number
 	 * for example the operator B*A where B is in space 1 and A is in space 0, the matrix of B*A will be A@B
 	 * where @ stands for kronecker product
 	 */
