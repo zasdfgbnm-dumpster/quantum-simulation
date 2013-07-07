@@ -4,6 +4,7 @@
 #include <complex>
 #include <cmath>
 #include <numeric>
+#include <functional>
 #include <Eigen/Eigen>
 using namespace std;
 using namespace Eigen;
@@ -325,6 +326,25 @@ public:
 	Operator operator*() const {
 		return Operator(subspace_dim,mat.adjoint());
 	}
+	
+	/* calling H.U() returns a function (double->Operator): t->exp(-i*H*t/hbar)
+	 * to call U(), H must be a Hermitian operator.  If this condition is violated
+	 * you won't get the correct result.
+	 */
+	function<Operator(double)> U() {
+		SelfAdjointEigenSolver<MatrixXcd> es(mat);
+		auto eigenvalues  = es.eigenvalues();
+		auto eigenvectors = es.eigenvectors();
+		auto dim_info = subspace_dim;
+		return [eigenvalues,eigenvectors,dim_info](double t) -> Operator {
+			int n = eigenvalues.size();
+			MatrixXcd ret = MatrixXcd::Zero(n,n);
+			for(int i=0;i<n;i++)
+				ret(i,i) = exp(-1_i*t*eigenvalues[i]/hbar);
+			ret = eigenvectors*ret*eigenvectors.adjoint();
+			return Operator(dim_info,ret);
+		};
+	}
 };
 Operator operator*(complex<double> c,const Operator op){
 	return op*c;
@@ -332,7 +352,7 @@ Operator operator*(complex<double> c,const Operator op){
 
 /* instead of writing op1.tr(...) we can also write tr(op1,...) */
 template <typename ... Tn>
-Operator tr(const Operator &op,Tn ... args) {
+auto tr(const Operator &op,Tn ... args) -> decltype(op.tr(args...)) {
 	return op.tr(args...);
 }
 
