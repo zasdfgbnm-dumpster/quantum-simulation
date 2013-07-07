@@ -308,6 +308,12 @@ public:
 		Operator _rhs = rhs.expand(*this);
 		return Operator(_lhs.subspace_dim,_lhs.mat*_rhs.mat);
 	}
+	Operator operator*(complex<double> c) const {
+		return Operator(subspace_dim,c*mat);
+	}
+	Operator operator/(complex<double> c) const {
+		return Operator(subspace_dim,mat/c);
+	}
 	Operator operator+() const {
 		return *this;
 	}
@@ -320,6 +326,9 @@ public:
 		return Operator(subspace_dim,mat.adjoint());
 	}
 };
+Operator operator*(complex<double> c,const Operator op){
+	return op*c;
+}
 
 /* instead of writing op1.tr(...) we can also write tr(op1,...) */
 template <typename ... Tn>
