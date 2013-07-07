@@ -183,7 +183,7 @@ class Operator {
 			target_dim.resize(op_sz,0);
 		auto it1 = target_dim.begin();
 		auto it2 = op.subspace_dim.begin();
-		while(it1!=target_dim.end()){
+		while(it2!=op.subspace_dim.end()){
 			if(*it1<=0&&*it2<=0)
 				goto end;
 			if(*it1==*it2)
