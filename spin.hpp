@@ -309,11 +309,27 @@ public:
 		Operator _rhs = rhs.expand(*this);
 		return Operator(_lhs.subspace_dim,_lhs.mat*_rhs.mat);
 	}
-	Operator operator*(complex<double> c) const {
+	Operator operator*(const complex<double> &c) const {
 		return Operator(subspace_dim,c*mat);
 	}
-	Operator operator/(complex<double> c) const {
+	Operator operator/(const complex<double> &c) const {
 		return Operator(subspace_dim,mat/c);
+	}
+	template<typename T>
+	Operator &operator+=(const T &rhs) {
+		return (*this = operator+(rhs));
+	}
+	template<typename T>
+	Operator &operator*=(const T &rhs) {
+		return (*this = operator*(rhs));
+	}
+	template<typename T>
+	Operator &operator-=(const T &rhs) {
+		return (*this = operator-(rhs));
+	}
+	template<typename T>
+	Operator &operator/=(const T &rhs) {
+		return (*this = operator/(rhs));
 	}
 	Operator operator+() const {
 		return *this;
