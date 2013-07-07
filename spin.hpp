@@ -399,4 +399,25 @@ Operator I(int subspace,int dim=2) {
 	return Operator(subspace,MatrixXcd::Identity(dim,dim));
 }
 
+/* helper function, won't used by user , used by function Op */
+void Op_helper(CommaInitializer<MatrixXcd> &initializer,complex<double> arg1) {
+	initializer,arg1;
+}
+template <typename ... Tn>
+void Op_helper(CommaInitializer<MatrixXcd> &initializer,complex<double> arg1,Tn ... args) {
+	Op_helper((initializer,arg1),args...);
+}
+/* this function will be used to generate an arbitary dimision operator
+ * to generate a N dimision operator in subspace numbered s1 with matrix
+ * element e1,e2,e3,...,eN, just write:
+ * Op<N>(s1,e1,e2,....,eN);
+ */
+template <int n,typename ... Tn>
+Operator Op(int subspace,complex<double> arg1,Tn ... args) {
+	MatrixXcd mat(n,n);
+	CommaInitializer<MatrixXcd> initializer = (mat<<arg1);
+	Op_helper(initializer,args...);
+	return Operator(subspace,mat);
+}
+
 #endif
