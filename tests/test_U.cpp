@@ -8,6 +8,8 @@ int main() {
 	uniform_real_distribution<double> t_dist(0,1);
 	while(true) {
 		int dim = dim_dist(engine);
+		if(!dim)
+			continue;
 		double t = t_dist(engine);
 		cout << "dimension: " << dim << endl;
 		MatrixXcd mat = MatrixXcd::Random(dim,dim);
