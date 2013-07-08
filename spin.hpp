@@ -202,6 +202,7 @@ class Operator {
 	
 public:
 	
+	Operator() = default;
 	Operator(vector<int> subspace_dim,MatrixXcd matrix):subspace_dim(subspace_dim),mat(matrix){
 		if(subspace_dim.size()==0)
 			throw "Operator::Operator(): the operator must be in at least one subspace";
