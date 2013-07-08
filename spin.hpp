@@ -146,7 +146,12 @@ class Operator {
 		int rdim;		/* dimision of rspace */
 		int rdim2;		/* dimision of the direct product space of espace and rspace */
 		/* calculate new_dim, ldim, rdim and rdim2 */
-		new_dim = mat.cols()*dimision;
+		int mcol = mat.cols();
+		/* if the operator before expand is null */
+		if(mcol==0)
+			return Operator(subspace,MatrixXcd::Zero(dimision,dimision));
+		/* if the operator before expand is not null */
+		new_dim = mcol*dimision;
 		ldim = accumulate(dim_info.begin(),dim_info.begin()+subspace,1,
 						  [](int a,int b){ return (a<=0?1:a)*(b<=0?1:b); });
 		rdim2 = new_dim/ldim;
