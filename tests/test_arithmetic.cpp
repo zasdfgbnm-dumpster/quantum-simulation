@@ -42,7 +42,7 @@ int main(){
 
 	/* distributions */
 	mt19937 engine(static_cast<unsigned long>(time(nullptr)));
-	poisson_distribution<int> nr_spaces_dist(5);  /* the distribution of number of subspaces */
+	poisson_distribution<int> nr_spaces_dist(2);  /* the distribution of number of subspaces */
 	poisson_distribution<int> dim_space_dist(0.5);  /* the distribution of dimension per subspace */
 	poisson_distribution<int> nr_terms_dist(10); /* the distribution of number of terms */
 	poisson_distribution<int> nr_factor_dist(1);  /* the distribution of number of factor per term */
@@ -79,6 +79,7 @@ int main(){
 			result_op += term_op;
 			result_mat += term_mat;
 		}
+		/* calculate error */
 		MatrixXcd diff = result_op.matrix() - result_mat;
 		double diff_sum = 0;
 		for(int i=0;i<total_size;i++)
