@@ -106,12 +106,12 @@ matrix exp_aH(typename matrix::Scalar a,const matrix &H){
 /* Operator class */
 class Operator {
 
-	/* The variable named "subspace_dim" store the dimision of subspaces which this operator is in.
-	 * the subspaces is numbered one by one from zero.  The value of subspace_dim[a] is the dimision
+	/* The variable named "subspace_dim" store the dimension of subspaces which this operator is in.
+	 * the subspaces is numbered one by one from zero.  The value of subspace_dim[a] is the dimension
 	 * of subspace numbered a.  This means that, for an operator in subspace numbered 6 and 7, subspace_dim
 	 * will have 8 elements, the first 6 of which have no use.  In this case, the values of these 6
 	 * elements must be set to any integer less than or equal to 0.  The reason for designing like that
-	 * is for simplicity, because we won't have a large amount subspaces because of the dificulty in quantum
+	 * is for simplicity, because we won't have a large amount subspaces because of the difficulty in quantum
 	 * many-body problem.  So the subspaces must be numbered one by one from zero, giving a subspace a large
 	 * number won't lead to mistakes in the result, but will cause serious waste in memory and computing time.
 	 */
@@ -126,36 +126,36 @@ class Operator {
 	/* expand current operator to a larger Hilbert space
 	 * the result operator will be in the direct product space of A and B
 	 * where A is current operator's space and B is the space specified by parameter "subspace"
-	 * the dimision of B is given by the parameter "dimision"
+	 * the dimension of B is given by the parameter "dimension"
 	 */
-	Operator expand(int subspace,int dimision) const {
+	Operator expand(int subspace,int dimension) const {
 		vector<int> dim_info = subspace_dim;
 		if(subspace+1>static_cast<signed int>(dim_info.size()))
 			dim_info.resize(subspace+1,0);
 		if(dim_info[subspace]>0)
 			throw "Operator::expand(): already in subspace";
-		dim_info[subspace] = dimision;
+		dim_info[subspace] = dimension;
 		/* here we define several terms: non-empty, lspace, rspace and espace
 		 * we say a subspace numbered n is non-empty if subspace_dim[n]>0 
 		 * lspace is the direct product space of non empty spaces numbered 0,1,2,...,(subspace-1)
 		 * rspace is the direct product space of non empty spaces numbered (subspace+1),(subspace+2),...,n
 		 * espace is the space numbered "subspace"(the parameter given)
 		 */
-		int new_dim;	/* dimision of the result (i.e. the direct product space of lspace, espace and rspace) */
-		int ldim;		/* dimision of lspace */
-		int rdim;		/* dimision of rspace */
-		int rdim2;		/* dimision of the direct product space of espace and rspace */
+		int new_dim;	/* dimension of the result (i.e. the direct product space of lspace, espace and rspace) */
+		int ldim;		/* dimension of lspace */
+		int rdim;		/* dimension of rspace */
+		int rdim2;		/* dimension of the direct product space of espace and rspace */
 		/* calculate new_dim, ldim, rdim and rdim2 */
 		int mcol = mat.cols();
 		/* if the operator before expand is null */
 		if(mcol==0)
-			return Operator(subspace,MatrixXcd::Zero(dimision,dimision));
+			return Operator(subspace,MatrixXcd::Zero(dimension,dimension));
 		/* if the operator before expand is not null */
-		new_dim = mcol*dimision;
+		new_dim = mcol*dimension;
 		ldim = accumulate(dim_info.begin(),dim_info.begin()+subspace,1,
 						  [](int a,int b){ return (a<=0?1:a)*(b<=0?1:b); });
 		rdim2 = new_dim/ldim;
-		rdim = rdim2/dimision;
+		rdim = rdim2/dimension;
 		MatrixXcd ret(new_dim,new_dim);
 		/* calculate new elements */
 		for(int i=0;i<new_dim;i++) {
@@ -195,7 +195,7 @@ class Operator {
 			if(*it1==*it2)
 				goto end;
 			if(*it1>0&&*it2>0)
-				throw "Operator::expand(): dimision information mismatch";
+				throw "Operator::expand(): dimension information mismatch";
 			if(*it2>0)
 				ret = ret.expand(it1-target_dim.begin(),*it2);
 		end:
@@ -214,7 +214,7 @@ public:
 		int dim = accumulate(subspace_dim.begin(),subspace_dim.end(),1,
 							 [](int a,int b){ return (a<=0?1:a)*(b<=0?1:b); });
 		if(dim!=matrix.cols()||dim!=matrix.rows())
-			throw "Operator::Operator(): matrix size and dimision information mismatch";
+			throw "Operator::Operator(): matrix size and dimension information mismatch";
 	}
 	/* initialize an operator in a single subspace */
 	Operator(int subspace,const MatrixXcd &matrix):subspace_dim(subspace+1,0),mat(matrix) {
@@ -258,11 +258,11 @@ public:
 		 * rspace is the direct product space of non empty spaces numbered (subspace+1),(subspace+2),...,n
 		 * tspace is the Hilbert space to be traced
 		 */
-		int dim;		/* dimision of tspace */
-		int new_dim;	/* dimision of the result (i.e. the direct product space of lspace and rspace) */
-		int ldim;		/* dimision of lspace */
-		int rdim;		/* dimision of rspace */
-		int rdim2;		/* dimision of the direct product space of tspace and rspace */
+		int dim;		/* dimension of tspace */
+		int new_dim;	/* dimension of the result (i.e. the direct product space of lspace and rspace) */
+		int ldim;		/* dimension of lspace */
+		int rdim;		/* dimension of rspace */
+		int rdim2;		/* dimension of the direct product space of tspace and rspace */
 		/* if no information stored, return *this */
 		if(subspace>=static_cast<signed int>(subspace_dim.size()))
 			return *this;
@@ -429,8 +429,8 @@ template <typename ... Tn>
 void Op_helper(CommaInitializer<MatrixXcd> &initializer,complex<double> arg1,Tn ... args) {
 	Op_helper((initializer,arg1),args...);
 }
-/* this function will be used to generate an arbitary dimision operator
- * to generate a N dimision operator in subspace numbered s1 with matrix
+/* this function will be used to generate an arbitary dimension operator
+ * to generate a N dimension operator in subspace numbered s1 with matrix
  * element e1,e2,e3,...,eN, just write:
  * Op<N>(s1,e1,e2,....,eN);
  */
