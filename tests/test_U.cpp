@@ -11,10 +11,12 @@ int main() {
 		double t = t_dist(engine);
 		cout << "dimension: " << dim << endl;
 		MatrixXcd mat = MatrixXcd::Random(dim,dim);
+		MatrixXcd mat1 = mat.adjoint();
+		mat += mat1;
 		/* calculate by Operator::U */
 		Operator op(0,mat);
 		auto U = op.U()(t);
-		/* calculate by matrix exponential */
+		/* calculate by Eigen's matrix exponential */
 		MatrixXcd mat_exp = (-1_i*mat*t/hbar).exp();
 		/* calculate error */
 		MatrixXcd diff = U.matrix()-mat_exp;
