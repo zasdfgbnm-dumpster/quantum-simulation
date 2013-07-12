@@ -352,6 +352,9 @@ public:
 	/* calling H.U() returns a function (double->Operator): t->exp(-i*H*t/hbar)
 	 * to call U(), H must be a Hermitian operator.  If this condition is violated
 	 * you won't get the correct result.
+	 * the time complexity of this function is N^3, where N is the dimension of the Operator H.
+	 * the returned function's time complexity is N^2
+	 * both this function and the function returned has a space complexity N^2
 	 */
 	function<Operator(double)> U() {
 		SelfAdjointEigenSolver<MatrixXcd> es(mat);
@@ -367,6 +370,7 @@ public:
 			return Operator(dim_info,ret);
 		};
 	}
+
 };
 Operator operator*(complex<double> c,const Operator op){
 	return op*c;
