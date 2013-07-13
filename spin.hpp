@@ -179,7 +179,7 @@ class Operator {
 	}
 	
 	/* expand current operator to the product space of op(given by parameter) and this operator
-	 * note that the product may not be direct procuct
+	 * note that the product may not be direct product
 	 */ 
 	Operator expand(const Operator &op) const {
 		Operator ret = *this;
@@ -371,6 +371,39 @@ public:
 		};
 	}
 
+	/* This is the calculator class of U(t;0) where U(t2,t1) is exp(-i*I(H;t2,t1)/hbar) in which I(H;t,t0) is the integral
+	 * of H(t') with variable t' from t0 to t.
+	 * To calculate exp(-i*I(H,t)/hbar), you must first create an object of class Ut.  The constructor have 3 parameters.
+	 * The first parameter is the function which emit H from t.  It must be a function taking a double and return an Operator.
+	 * The second parameter is tolerance, the integral I(H,t) will be splitted into small intervals sized tolerance and in each
+	 * interval e.g. (t1,t1+tolerance) the I(H,t) will be approximated by H(t1+tolerance/2)*tolerance.
+	 * The third parameter is cache_step, this parameter determines how many cache there will be.  The larger cache_step is,
+	 * the more memory will be token and the better performance we will get.  If cache_step is 0, no data will be cached.
+	 * For more information, see description about implementation below.
+	 * After the object of class Ut created, we can calculated the exponential by calling the object's operator().  This operator only
+	 * take one parameter, the time t, and return the result as type Operator.
+	 *
+	 * Implementation:
+	 * Each time operator() is called, with parameter t, U(tolerance;0),U(2tolerance;tolerance),...,U(t;t') will be calculated, where
+	 * t' is the biggest multiple of tolerance smaller than t and U(t2;t1) will be approximated by exp[-i*H*(t2-t1)/hbar].  Then the
+	 * result will be U(t;t')...U(2tolerance;tolerance)U(tolerance;0).  To improve performance, the value of U(0,tc), U(tc,2*tc),
+	 * U(2*tc,3*tc),...,U((n-1)*tc,n*tc), where tc = cache_step*tolerance and n is the biggest integer that obey n*tc<=t , will be cached.
+	 * The next time operator() is called, cached U(t2;t1) will be read from cache to save time.
+	 *
+	 * Complexity:
+	 * The time complexity of operator() is M*N^3, where M=(t-n*tc)/tolerance if cache_step!=0 and M=t/tolerance, if cache_step==0, and N
+	 * is the dimension of H.
+	 * The space complexity of a Ut object is n*N^2
+	 */
+	class Ut {
+		Operator(double) Ht;
+		const double tolerance;
+		vector <Operator> cache;
+		int cache_step;
+	public:
+		Ut(const Operator(double) &Ht,double tolerance,int cache_step=1):Ht(Ht),tolerance(tolerance),cache_step(1){}
+		Operator operator()(double t);
+	};
 };
 Operator operator*(complex<double> c,const Operator op){
 	return op*c;
