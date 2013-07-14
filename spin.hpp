@@ -438,6 +438,8 @@ public:
 		Ut(function<Operator(double)> Ht,double tolerance,int cache_step=1):Ht(Ht),tolerance(tolerance),cache({Operator(1)}),cache_step(cache_step){}
 		void clear_cache() { cache.clear(); cache.push_back(Operator(1)); }
 		Operator operator()(double t) {
+			if(t<0)
+				return *((*this)(-t));
 			tuple<double,Operator&> start_point = make_cache(t);
 			double t_start = get<0>(start_point);
 			int n_step = static_cast<int>((t-t_start)/tolerance);
