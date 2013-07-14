@@ -5,6 +5,7 @@
 #include <cmath>
 #include <numeric>
 #include <functional>
+#include <tuple>
 #include <Eigen/Eigen>
 using namespace std;
 using namespace Eigen;
@@ -106,6 +107,7 @@ matrix exp_aH(typename matrix::Scalar a,const matrix &H){
 /* Operator class */
 class Operator {
 
+	bool null_identity = false;
 	/* The variable named "subspace_dim" store the dimension of subspaces which this operator is in.
 	 * the subspaces is numbered one by one from zero.  The value of subspace_dim[a] is the dimension
 	 * of subspace numbered a.  This means that, for an operator in subspace numbered 6 and 7, subspace_dim
@@ -149,7 +151,7 @@ class Operator {
 		int mcol = mat.cols();
 		/* if the operator before expand is null */
 		if(mcol==0)
-			return Operator(subspace,MatrixXcd::Zero(dimension,dimension));
+			return null_identity?Operator(subspace,MatrixXcd::Identity(dimension,dimension)):Operator(subspace,MatrixXcd::Zero(dimension,dimension));
 		/* if the operator before expand is not null */
 		new_dim = mcol*dimension;
 		ldim = accumulate(dim_info.begin(),dim_info.begin()+subspace,1,
@@ -208,6 +210,10 @@ class Operator {
 public:
 	
 	Operator() = default;
+	Operator(int i) {
+		if(i==1) null_identity=true;
+		else if(i!=0) throw "Operator::Operator(): null operator must be zero or identity";
+	}
 	Operator(vector<int> subspace_dim,MatrixXcd matrix):subspace_dim(subspace_dim),mat(matrix){
 		if(subspace_dim.size()==0)
 			throw "Operator::Operator(): the operator must be in at least one subspace";
@@ -325,6 +331,7 @@ public:
 	Operator &operator+=(const T &rhs) {
 		return (*this = operator+(rhs));
 	}
+	/* a*=b is equivalent to a=a*b which may not equal to a=b*a */
 	template<typename T>
 	Operator &operator*=(const T &rhs) {
 		return (*this = operator*(rhs));
@@ -388,7 +395,9 @@ public:
 	 * t' is the biggest multiple of tolerance smaller than t and U(t2;t1) will be approximated by exp[-i*H*(t2-t1)/hbar].  Then the
 	 * result will be U(t;t')...U(2tolerance;tolerance)U(tolerance;0).  To improve performance, the value of U(0,tc), U(tc,2*tc),
 	 * U(2*tc,3*tc),...,U((n-1)*tc,n*tc), where tc = cache_step*tolerance and n is the biggest integer that obey n*tc<=t , will be cached.
-	 * The next time operator() is called, cached U(t2;t1) will be read from cache to save time.
+	 * The next time operator() is called, cached U(t2;t1) will be read from cache to save time.  Note that if H depends not only on t, cache
+	 * may lead to error if some other parameters that H depend on varied.  Under this circumstance, in order to get the right answer, run
+	 * Ut::clear_cache() after these parameters varied or set cache_step=0 to disable cache at construction time.
 	 *
 	 * Complexity:
 	 * The time complexity of operator() is M*N^3, where M=(t-n*tc)/tolerance if cache_step!=0 and M=t/tolerance, if cache_step==0, and N
@@ -396,13 +405,48 @@ public:
 	 * The space complexity of a Ut object is n*N^2
 	 */
 	class Ut {
-		Operator(double) Ht;
+		Operator (&Ht)(double);
 		const double tolerance;
 		vector <Operator> cache;
 		int cache_step;
+		Operator step(double t_start,int n) {
+			Operator prod = 1;
+			while(n--) {
+				Operator H = Ht(t_start+tolerance/2);
+				auto U = H.U();
+				prod = U(tolerance)*prod;
+				t_start += tolerance;
+			}
+			return prod;
+		}
+		tuple<double,Operator&> make_cache(double t) {
+			double c_step = tolerance*cache_step;
+			if(cache_step==0)
+				return tuple<double,Operator&>(0,cache[0]);
+			int n_cache = static_cast<int>(t/c_step);
+			int sz = cache.size();
+			if(n_cache<sz)
+				return tuple<double,Operator&>(n_cache*c_step,cache[n_cache]);
+			while(sz<=n_cache) {
+				double t_start = (sz-1)*c_step;
+				cache.push_back(step(t_start,cache_step)*cache[sz-1]);
+				sz++;
+			}
+		}
 	public:
-		Ut(const Operator(double) &Ht,double tolerance,int cache_step=1):Ht(Ht),tolerance(tolerance),cache_step(1){}
-		Operator operator()(double t);
+		Ut(Operator (&Ht)(double),double tolerance,int cache_step=1):Ht(Ht),tolerance(tolerance),cache({Operator(1)}),cache_step(1){}
+		void clear_cache() { cache.clear(); cache.push_back(Operator(1)); }
+		Operator operator()(double t) {
+			tuple<double,Operator&> start_point = make_cache(t);
+			double t_start = get<0>(start_point);
+			int n_step = static_cast<int>((t-t_start)/tolerance);
+			double t_end = t_start + n_step*tolerance;
+			Operator U1 = step(t_start,n_step);
+			double t_mid = (t_end+t)/2;
+			Operator H = Ht(t_mid);
+			auto U = H.U();
+			return U(t-t_end)*U1*get<1>(start_point);
+		}
 	};
 };
 Operator operator*(complex<double> c,const Operator op){
