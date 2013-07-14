@@ -405,7 +405,7 @@ public:
 	 * The space complexity of a Ut object is n*N^2
 	 */
 	class Ut {
-		Operator (&Ht)(double);
+		function<Operator(double)> Ht;
 		const double tolerance;
 		vector <Operator> cache;
 		int cache_step;
@@ -432,9 +432,10 @@ public:
 				cache.push_back(step(t_start,cache_step)*cache[sz-1]);
 				sz++;
 			}
+			return tuple<double,Operator&>(n_cache*c_step,cache[n_cache]);
 		}
 	public:
-		Ut(Operator (&Ht)(double),double tolerance,int cache_step=1):Ht(Ht),tolerance(tolerance),cache({Operator(1)}),cache_step(1){}
+		Ut(function<Operator(double)> Ht,double tolerance,int cache_step=1):Ht(Ht),tolerance(tolerance),cache({Operator(1)}),cache_step(cache_step){}
 		void clear_cache() { cache.clear(); cache.push_back(Operator(1)); }
 		Operator operator()(double t) {
 			tuple<double,Operator&> start_point = make_cache(t);
