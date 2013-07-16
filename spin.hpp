@@ -5,6 +5,7 @@
 #include <cmath>
 #include <numeric>
 #include <functional>
+#include <algorithm>
 #include <tuple>
 #include <Eigen/Eigen>
 using namespace std;
@@ -378,79 +379,34 @@ public:
 		};
 	}
 
-	/* This is the calculator class of U(t;0) where U(t2,t1) is exp(-i*I(H;t2,t1)/hbar) in which I(H;t,t0) is the integral
-	 * of H(t') with variable t' from t0 to t.
-	 * To calculate exp(-i*I(H,t)/hbar), you must first create an object of class Ut.  The constructor have 3 parameters.
-	 * The first parameter is the function which emit H from t.  It must be a function taking a double and return an Operator.
-	 * The second parameter is tolerance, the integral I(H,t) will be splitted into small intervals sized tolerance and in each
-	 * interval e.g. (t1,t1+tolerance) the I(H,t) will be approximated by H(t1+tolerance/2)*tolerance.
-	 * The third parameter is cache_step, this parameter determines how many cache there will be.  The larger cache_step is,
-	 * the more memory will be token and the better performance we will get.  If cache_step is 0, no data will be cached.
-	 * For more information, see description about implementation below.
-	 * After the object of class Ut created, we can calculated the exponential by calling the object's operator().  This operator only
-	 * take one parameter, the time t, and return the result as type Operator.
-	 *
-	 * Implementation:
-	 * Each time operator() is called, with parameter t, U(tolerance;0),U(2tolerance;tolerance),...,U(t;t') will be calculated, where
-	 * t' is the biggest multiple of tolerance smaller than t and U(t2;t1) will be approximated by exp[-i*H*(t2-t1)/hbar].  Then the
-	 * result will be U(t;t')...U(2tolerance;tolerance)U(tolerance;0).  To improve performance, the value of U(0,tc), U(tc,2*tc),
-	 * U(2*tc,3*tc),...,U((n-1)*tc,n*tc), where tc = cache_step*tolerance and n is the biggest integer that obey n*tc<=t , will be cached.
-	 * The next time operator() is called, cached U(t2;t1) will be read from cache to save time.  Note that if H depends not only on t, cache
-	 * may lead to error if some other parameters that H depend on varied.  Under this circumstance, in order to get the right answer, run
-	 * Ut::clear_cache() after these parameters varied or set cache_step=0 to disable cache at construction time.
-	 *
-	 * Complexity:
-	 * The time complexity of operator() is M*N^3, where M=(t-n*tc)/tolerance if cache_step!=0 and M=t/tolerance, if cache_step==0, and N
-	 * is the dimension of H.
-	 * The space complexity of a Ut object is n*N^2
+	/* Solve Liouville Equation i*hbar*(partial rho/partial t) = [H,rho].
+	 * The method to solve this equation is forward difference quotient.
+	 * To solve Liouville Equation, the first step is to create an object of LiouvilleEqSolver.
+	 * The constructor of LiouvilleEqSolver receives three parameters. The first is the function
+	 * which emit H from t.  It must be a function taking a double and return an Operator.
+	 * The second parameter is the density operator at time 0.  The third parameter is the step.
+	 * The fourth parameter is a vector<double> storing time at which the density operator will
+	 * be calculated.  The return value is a vector<Operator> stores density operator at time stored
+	 * in the parameter time.
 	 */
-	class Ut {
-		function<Operator(double)> Ht;
-		const double tolerance;
-		vector <Operator> cache;
-		int cache_step;
-		Operator step(double t_start,int n) {
-			Operator prod = 1;
+	static vector<Operator> SolveLiouvilleEq(function<Operator(double)> Ht,Operator rho0,double step,vector<double> time) {
+		sort(time.begin(),time.end());
+		vector<Operator> ret;
+		double t_ = 0;
+		for(auto i: time) {
+			int n = static_cast<int>((i-t_)/step);
+			t_ += n*step;
+			Operator H;
 			while(n--) {
-				Operator H = Ht(t_start+tolerance/2);
-				auto U = H.U();
-				prod = U(tolerance)*prod;
-				t_start += tolerance;
+				H = Ht(t_-(n+1)*step);
+				rho0 += (H*rho0-rho0*H)*complex<double>(step,0)/(1_i*hbar);
 			}
-			return prod;
+			H = Ht(t_);
+			Operator rhot = rho0 + (H*rho0-rho0*H)*complex<double>(i-t_,0)/(1_i*hbar);
+			ret.push_back(rhot);
 		}
-		tuple<double,Operator&> make_cache(double t) {
-			double c_step = tolerance*cache_step;
-			if(cache_step==0)
-				return tuple<double,Operator&>(0,cache[0]);
-			int n_cache = static_cast<int>(t/c_step);
-			int sz = cache.size();
-			if(n_cache<sz)
-				return tuple<double,Operator&>(n_cache*c_step,cache[n_cache]);
-			while(sz<=n_cache) {
-				double t_start = (sz-1)*c_step;
-				cache.push_back(step(t_start,cache_step)*cache[sz-1]);
-				sz++;
-			}
-			return tuple<double,Operator&>(n_cache*c_step,cache[n_cache]);
-		}
-	public:
-		Ut(function<Operator(double)> Ht,double tolerance,int cache_step=1):Ht(Ht),tolerance(tolerance),cache({Operator(1)}),cache_step(cache_step){}
-		void clear_cache() { cache.clear(); cache.push_back(Operator(1)); }
-		Operator operator()(double t) {
-			if(t<0)
-				return *((*this)(-t));
-			tuple<double,Operator&> start_point = make_cache(t);
-			double t_start = get<0>(start_point);
-			int n_step = static_cast<int>((t-t_start)/tolerance);
-			double t_end = t_start + n_step*tolerance;
-			Operator U1 = step(t_start,n_step);
-			double t_mid = (t_end+t)/2;
-			Operator H = Ht(t_mid);
-			auto U = H.U();
-			return U(t-t_end)*U1*get<1>(start_point);
-		}
-	};
+		return ret;
+	}
 };
 Operator operator*(complex<double> c,const Operator op){
 	return op*c;
@@ -525,5 +481,6 @@ Operator Op(int subspace,complex<double> arg1,Tn ... args) {
 	Op_helper(initializer,args...);
 	return Operator(subspace,mat);
 }
+
 
 #endif
