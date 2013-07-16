@@ -387,9 +387,9 @@ public:
 	 * The second parameter is the density operator at time 0.  The third parameter is the step.
 	 * The fourth parameter is a vector<double> storing time at which the density operator will
 	 * be calculated.  The return value is a vector<Operator> stores density operator at time stored
-	 * in the parameter time.
+	 * in the parameter time.  The returned density operator is sorted by time increasing.
 	 */
-	static vector<Operator> SolveLiouvilleEq(function<Operator(double)> Ht,Operator rho0,double step,vector<double> time) {
+	static vector<Operator> SolveLiouvilleEq(function<Operator(double)> Ht,const Operator &rho0,double step,vector<double> time) {
 		sort(time.begin(),time.end());
 		vector<Operator> ret;
 		double t_ = 0;
