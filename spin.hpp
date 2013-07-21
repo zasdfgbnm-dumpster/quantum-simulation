@@ -7,7 +7,7 @@
 #include <functional>
 #include <algorithm>
 #include <tuple>
-#include <Eigen/Eigen>
+#include <eigen3/Eigen/Eigen>
 using namespace std;
 using namespace Eigen;
 
