@@ -34,6 +34,18 @@ double operator "" _Hz (long double f) {
 double operator "" _Hz (unsigned long long f) {
 	return static_cast<double>(f);
 }
+double operator "" _KHz (long double f) {
+	return 1e3*static_cast<double>(f);
+}
+double operator "" _KHz (unsigned long long f) {
+	return 1e3*static_cast<double>(f);
+}
+double operator "" _kHz (long double f) {
+	return 1e3*static_cast<double>(f);
+}
+double operator "" _kHz (unsigned long long f) {
+	return 1e3*static_cast<double>(f);
+}
 double operator "" _MHz (long double f) {
 	return 1e6*static_cast<double>(f);
 }
@@ -45,6 +57,12 @@ double operator "" _GHz (long double f) {
 }
 double operator "" _GHz (unsigned long long f) {
 	return 1e9*static_cast<double>(f);
+}
+double operator "" _THz (long double f) {
+	return 1e12*static_cast<double>(f);
+}
+double operator "" _THz (unsigned long long f) {
+	return 1e12*static_cast<double>(f);
 }
 double operator "" _ns (long double f) {
 	return static_cast<double>(f)/1e9;
