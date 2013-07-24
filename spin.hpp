@@ -7,7 +7,7 @@
 #include <functional>
 #include <algorithm>
 #include <tuple>
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 using namespace std;
 using namespace Eigen;
 
@@ -179,6 +179,7 @@ class Operator {
 		rdim = rdim2/dimension;
 		MatrixXcd ret(new_dim,new_dim);
 		/* calculate new elements */
+		#pragma omp parallel for
 		for(int i=0;i<new_dim;i++) {
 			for(int j=0;j<new_dim;j++) {
 				/* (i1,j1) is (i,j)'s coordinate in lspace */
@@ -302,6 +303,7 @@ public:
 		rdim2 = rdim*dim;
 		/* calculate the result matrix */
 		MatrixXcd ret(new_dim,new_dim);
+		#pragma omp parallel for
 		for(int i=0;i<new_dim;i++) {
 			for(int j=0;j<new_dim;j++) {
 				/* (i1,j1) is (i,j)'s coordinate in lspace */
