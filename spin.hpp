@@ -16,7 +16,7 @@ using namespace Eigen;
 /* mathematic constants */
 /* pi */
 #ifndef M_PI
-#define M_PI 2*cos(-1)
+#define M_PI acos(-1)
 #endif
 constexpr double pi = M_PI;
 
